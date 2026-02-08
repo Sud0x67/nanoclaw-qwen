@@ -13,6 +13,9 @@ import {
   CONTAINER_TIMEOUT,
   DATA_DIR,
   GROUPS_DIR,
+  LOG_LEVEL,
+  QWEN_API_KEY,
+  TELEGRAM_BOT_TOKEN,
 } from './config.js';
 import { logger } from './logger.js';
 import { validateAdditionalMounts } from './mount-security.js';
@@ -140,31 +143,24 @@ function buildVolumeMounts(
   });
 
   // Environment file directory (keeps credentials out of process listings)
-  // Only expose specific auth variables needed by Claude Code, not the entire .env
+  // Only expose specific auth variables needed by the agent, not the entire host env
   const envDir = path.join(DATA_DIR, 'env');
   fs.mkdirSync(envDir, { recursive: true });
-  const envFile = path.join(projectRoot, '.env');
-  if (fs.existsSync(envFile)) {
-    const envContent = fs.readFileSync(envFile, 'utf-8');
-    // TODO add qwen api key if needed
-    const allowedVars = ['CLAUDE_CODE_OAUTH_TOKEN', 'ANTHROPIC_API_KEY'];
-    const filteredLines = envContent.split('\n').filter((line) => {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) return false;
-      return allowedVars.some((v) => trimmed.startsWith(`${v}=`));
-    });
+  const envLines: string[] = [];
+  if (QWEN_API_KEY) {
+    envLines.push(`QWEN_API_KEY=${QWEN_API_KEY}`);
+  }
+  if (TELEGRAM_BOT_TOKEN) {
+    envLines.push(`TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}`);
+  }
 
-    if (filteredLines.length > 0) {
-      fs.writeFileSync(
-        path.join(envDir, 'env'),
-        filteredLines.join('\n') + '\n',
-      );
-      mounts.push({
-        hostPath: envDir,
-        containerPath: '/workspace/env-dir',
-        readonly: true,
-      });
-    }
+  if (envLines.length > 0) {
+    fs.writeFileSync(path.join(envDir, 'env'), envLines.join('\n') + '\n');
+    mounts.push({
+      hostPath: envDir,
+      containerPath: '/workspace/env-dir',
+      readonly: true,
+    });
   }
 
   // Additional mounts validated against external allowlist (tamper-proof from containers)
@@ -337,8 +333,7 @@ export async function runContainerAgent(
 
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const logFile = path.join(logsDir, `container-${timestamp}.log`);
-      const isVerbose =
-        process.env.LOG_LEVEL === 'debug' || process.env.LOG_LEVEL === 'trace';
+      const isVerbose = LOG_LEVEL === 'debug' || LOG_LEVEL === 'trace';
 
       const logLines = [
         `=== Container Run Log ===`,

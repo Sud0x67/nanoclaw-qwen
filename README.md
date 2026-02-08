@@ -108,6 +108,14 @@ Skills we'd love to see:
 - [Claude Code](https://claude.ai/download)
 - [Docker](https://docker.com/products/docker-desktop)
 
+## Configuration
+
+Runtime configuration is stored at:
+
+`~/.config/nanoclaw-qwen/config.json`
+
+This includes your Telegram bot token and other runtime settings.
+
 ## Architecture
 
 ```

@@ -147,7 +147,7 @@ nanoclaw/
 │   ├── sessions.json              # Active session IDs per group
 │   ├── registered_groups.json     # Group JID → folder mapping
 │   ├── router_state.json          # Last processed timestamp + last agent timestamps
-│   ├── env/env                    # Copy of .env for container mounting
+│   ├── env/env                    # Generated from config.json for container mounting
 │   └── ipc/                       # Container IPC (messages/, tasks/)
 │
 ├── logs/                          # Runtime logs (gitignored)
@@ -163,27 +163,23 @@ nanoclaw/
 
 ## Configuration
 
-Configuration constants are in `src/config.ts`:
+Runtime configuration is read from:
 
-```typescript
-import path from 'path';
+`~/.config/nanoclaw-qwen/config.json`
 
-export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || 'Andy';
-export const POLL_INTERVAL = 2000;
-export const SCHEDULER_POLL_INTERVAL = 60000;
-
-// Paths are absolute (required for container mounts)
-const PROJECT_ROOT = process.cwd();
-export const STORE_DIR = path.resolve(PROJECT_ROOT, 'store');
-export const GROUPS_DIR = path.resolve(PROJECT_ROOT, 'groups');
-export const DATA_DIR = path.resolve(PROJECT_ROOT, 'data');
-
-// Container configuration
-export const CONTAINER_IMAGE = process.env.CONTAINER_IMAGE || 'nanoclaw-agent:latest';
-export const CONTAINER_TIMEOUT = parseInt(process.env.CONTAINER_TIMEOUT || '300000', 10);
-export const IPC_POLL_INTERVAL = 1000;
-
-export const TRIGGER_PATTERN = new RegExp(`^@${ASSISTANT_NAME}\\b`, 'i');
+Example:
+```json
+{
+  "assistantName": "Nana",
+  "telegramBotToken": "123456:ABC-DEF...",
+  "qwenApiKey": "",
+  "containerImage": "nanoclaw-qwen-agent:latest",
+  "containerTimeoutMs": 300000,
+  "containerMaxOutputSize": 10485760,
+  "maxConcurrentContainers": 5,
+  "timezone": "UTC",
+  "logLevel": "info"
+}
 ```
 
 **Note:** Paths must be absolute for Docker volume mounts to work correctly.
@@ -217,32 +213,21 @@ Additional mounts appear at `/workspace/extra/{containerPath}` inside the contai
 
 **Docker mount syntax note:** Read-write mounts use `-v host:container`, and readonly mounts use `-v host:container:ro`.
 
-### Claude Authentication
+### API Authentication
 
-Configure authentication in a `.env` file in the project root. Two options:
+Configure API keys in `~/.config/nanoclaw-qwen/config.json`:
 
-**Option 1: Claude Subscription (OAuth token)**
-```bash
-CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...
-```
-The token can be extracted from `~/.claude/.credentials.json` if you're logged in to Claude Code.
-
-**Option 2: Pay-per-use API Key**
-```bash
-ANTHROPIC_API_KEY=sk-ant-api03-...
+```json
+{
+  "qwenApiKey": "sk-..."
+}
 ```
 
-Only the authentication variables (`CLAUDE_CODE_OAUTH_TOKEN` and `ANTHROPIC_API_KEY`) are extracted from `.env` and mounted into the container at `/workspace/env-dir/env`, then sourced by the entrypoint script. This keeps credentials out of process listings and avoids exposing unrelated environment variables to the agent.
+Only required keys are mounted into the container at `/workspace/env-dir/env`, keeping credentials out of process listings and avoiding exposure of unrelated configuration.
 
 ### Changing the Assistant Name
 
-Set the `ASSISTANT_NAME` environment variable:
-
-```bash
-ASSISTANT_NAME=Bot npm start
-```
-
-Or edit the default in `src/config.ts`. This changes:
+Edit `assistantName` in `~/.config/nanoclaw-qwen/config.json`. This changes:
 - The trigger pattern (messages must start with `@YourName`)
 - The response prefix (`YourName:` added automatically)
 
@@ -575,7 +560,7 @@ Telegram messages could contain malicious instructions attempting to manipulate 
 | Credential | Storage Location | Notes |
 |------------|------------------|-------|
 | Claude CLI Auth | data/sessions/{group}/.claude/ | Per-group isolation, mounted to /home/node/.claude/ |
-| Telegram Bot Token | .env | Stored in `TELEGRAM_BOT_TOKEN` |
+| Telegram Bot Token | ~/.config/nanoclaw-qwen/config.json | Stored in `telegramBotToken` |
 
 ### File Permissions
 
@@ -598,7 +583,7 @@ chmod 700 groups/
 | Session not continuing | Session ID not saved | Check `data/sessions.json` |
 | Session not continuing | Mount path mismatch | Container user is `node` with HOME=/home/node; sessions must be at `/home/node/.claude/` |
 | "409: Conflict" | Another Telegram bot instance is running | Stop other instances and retry |
-| "No groups registered" | Haven't started Telegram bot | Ensure `TELEGRAM_BOT_TOKEN` is set and restart |
+| "No groups registered" | Haven't started Telegram bot | Ensure `telegramBotToken` is set in config.json and restart |
 
 ### Log Location
 
