@@ -4,8 +4,7 @@
  */
 
 import fs from 'fs';
-import path from 'path';
-import { query, HookCallback, PreCompactHookInput } from '@anthropic-ai/claude-agent-sdk';
+import { query, type SDKUserMessage } from '@qwen-code/sdk';
 import { createIpcMcp } from './ipc-mcp.js';
 
 interface ContainerInput {
@@ -84,147 +83,6 @@ function log(message: string): void {
   console.error(`[agent-runner] ${message}`);
 }
 
-function getSessionSummary(sessionId: string, transcriptPath: string): string | null {
-  // sessions-index.json is in the same directory as the transcript
-  const projectDir = path.dirname(transcriptPath);
-  const indexPath = path.join(projectDir, 'sessions-index.json');
-
-  if (!fs.existsSync(indexPath)) {
-    log(`Sessions index not found at ${indexPath}`);
-    return null;
-  }
-
-  try {
-    const index: SessionsIndex = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
-    const entry = index.entries.find(e => e.sessionId === sessionId);
-    if (entry?.summary) {
-      return entry.summary;
-    }
-  } catch (err) {
-    log(`Failed to read sessions index: ${err instanceof Error ? err.message : String(err)}`);
-  }
-
-  return null;
-}
-
-/**
- * Archive the full transcript to conversations/ before compaction.
- */
-function createPreCompactHook(): HookCallback {
-  return async (input, _toolUseId, _context) => {
-    const preCompact = input as PreCompactHookInput;
-    const transcriptPath = preCompact.transcript_path;
-    const sessionId = preCompact.session_id;
-
-    if (!transcriptPath || !fs.existsSync(transcriptPath)) {
-      log('No transcript found for archiving');
-      return {};
-    }
-
-    try {
-      const content = fs.readFileSync(transcriptPath, 'utf-8');
-      const messages = parseTranscript(content);
-
-      if (messages.length === 0) {
-        log('No messages to archive');
-        return {};
-      }
-
-      const summary = getSessionSummary(sessionId, transcriptPath);
-      const name = summary ? sanitizeFilename(summary) : generateFallbackName();
-
-      const conversationsDir = '/workspace/group/conversations';
-      fs.mkdirSync(conversationsDir, { recursive: true });
-
-      const date = new Date().toISOString().split('T')[0];
-      const filename = `${date}-${name}.md`;
-      const filePath = path.join(conversationsDir, filename);
-
-      const markdown = formatTranscriptMarkdown(messages, summary);
-      fs.writeFileSync(filePath, markdown);
-
-      log(`Archived conversation to ${filePath}`);
-    } catch (err) {
-      log(`Failed to archive transcript: ${err instanceof Error ? err.message : String(err)}`);
-    }
-
-    return {};
-  };
-}
-
-function sanitizeFilename(summary: string): string {
-  return summary
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 50);
-}
-
-function generateFallbackName(): string {
-  const time = new Date();
-  return `conversation-${time.getHours().toString().padStart(2, '0')}${time.getMinutes().toString().padStart(2, '0')}`;
-}
-
-interface ParsedMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
-function parseTranscript(content: string): ParsedMessage[] {
-  const messages: ParsedMessage[] = [];
-
-  for (const line of content.split('\n')) {
-    if (!line.trim()) continue;
-    try {
-      const entry = JSON.parse(line);
-      if (entry.type === 'user' && entry.message?.content) {
-        const text = typeof entry.message.content === 'string'
-          ? entry.message.content
-          : entry.message.content.map((c: { text?: string }) => c.text || '').join('');
-        if (text) messages.push({ role: 'user', content: text });
-      } else if (entry.type === 'assistant' && entry.message?.content) {
-        const textParts = entry.message.content
-          .filter((c: { type: string }) => c.type === 'text')
-          .map((c: { text: string }) => c.text);
-        const text = textParts.join('');
-        if (text) messages.push({ role: 'assistant', content: text });
-      }
-    } catch {
-    }
-  }
-
-  return messages;
-}
-
-function formatTranscriptMarkdown(messages: ParsedMessage[], title?: string | null): string {
-  const now = new Date();
-  const formatDateTime = (d: Date) => d.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
-  });
-
-  const lines: string[] = [];
-  lines.push(`# ${title || 'Conversation'}`);
-  lines.push('');
-  lines.push(`Archived: ${formatDateTime(now)}`);
-  lines.push('');
-  lines.push('---');
-  lines.push('');
-
-  for (const msg of messages) {
-    const sender = msg.role === 'user' ? 'User' : 'Andy';
-    const content = msg.content.length > 2000
-      ? msg.content.slice(0, 2000) + '...'
-      : msg.content;
-    lines.push(`**${sender}**: ${content}`);
-    lines.push('');
-  }
-
-  return lines.join('\n');
-}
 
 async function main(): Promise<void> {
   let input: ContainerInput;
@@ -264,58 +122,91 @@ async function main(): Promise<void> {
     globalClaudeMd = fs.readFileSync(globalClaudeMdPath, 'utf-8');
   }
 
+  const outputInstructions = [
+    'You must respond with a single JSON object and nothing else.',
+    'Schema: {"outputType":"message"|"log","userMessage"?:string,"internalLog"?:string}.',
+    'If you want to send a message to the user or group, set outputType="message" and include userMessage.',
+    'Otherwise set outputType="log" and optionally include internalLog.'
+  ].join(' ');
+
+  const systemContext = globalClaudeMd
+    ? `\n\n[GLOBAL CONTEXT]\n${globalClaudeMd}\n`
+    : '';
+
+  const fullPrompt = `${prompt}${systemContext}\n\n${outputInstructions}`;
+
+  const resumeSessionId = input.sessionId;
+  const promptInput: string | AsyncIterable<SDKUserMessage> = resumeSessionId
+    ? (async function* (): AsyncIterable<SDKUserMessage> {
+        yield {
+          type: 'user',
+          session_id: resumeSessionId,
+          message: { role: 'user', content: fullPrompt },
+          parent_tool_use_id: null
+        };
+      })()
+    : fullPrompt;
+
   try {
     log('Starting agent...');
 
     for await (const message of query({
-      prompt,
+      prompt: promptInput,
       options: {
         cwd: '/workspace/group',
-        resume: input.sessionId,
-        systemPrompt: globalClaudeMd
-          ? { type: 'preset' as const, preset: 'claude_code' as const, append: globalClaudeMd }
-          : undefined,
         allowedTools: [
           'Bash',
           'Read', 'Write', 'Edit', 'Glob', 'Grep',
           'WebSearch', 'WebFetch',
           'mcp__nanoclaw__*'
         ],
-        permissionMode: 'bypassPermissions',
-        allowDangerouslySkipPermissions: true,
-        settingSources: ['project'],
+        permissionMode: 'yolo',
         mcpServers: {
           nanoclaw: ipcMcp
-        },
-        hooks: {
-          PreCompact: [{ hooks: [createPreCompactHook()] }]
-        },
-        outputFormat: {
-          type: 'json_schema',
-          schema: AGENT_RESPONSE_SCHEMA,
         }
       }
     })) {
-      if (message.type === 'system' && message.subtype === 'init') {
+      if (message.type === 'system' && !newSessionId) {
         newSessionId = message.session_id;
         log(`Session initialized: ${newSessionId}`);
       }
 
       if (message.type === 'result') {
-        if (message.subtype === 'success' && message.structured_output) {
-          result = message.structured_output as AgentResponse;
-          if (result.outputType === 'message' && !result.userMessage) {
-            log('Warning: outputType is "message" but userMessage is missing, treating as "log"');
-            result = { outputType: 'log', internalLog: result.internalLog };
+        if (message.subtype === 'success') {
+          const textResult = message.result;
+          let parsed: AgentResponse | null = null;
+          try {
+            parsed = JSON.parse(textResult) as AgentResponse;
+          } catch {
+            // Try to extract JSON object if the model wrapped output with extra text
+            const start = textResult.indexOf('{');
+            const end = textResult.lastIndexOf('}');
+            if (start !== -1 && end !== -1 && end > start) {
+              try {
+                parsed = JSON.parse(textResult.slice(start, end + 1)) as AgentResponse;
+              } catch {
+                parsed = null;
+              }
+            }
           }
-          log(`Agent result: outputType=${result.outputType}${result.internalLog ? `, log=${result.internalLog}` : ''}`);
-        } else if (message.subtype === 'success' || message.subtype === 'error_max_structured_output_retries') {
-          // Structured output missing or agent couldn't produce valid structured output — fall back to text
-          log(`Structured output unavailable (subtype=${message.subtype}), falling back to text`);
-          const textResult = 'result' in message ? (message as { result?: string }).result : null;
-          if (textResult) {
-            result = { outputType: 'message', userMessage: textResult };
+
+          if (parsed && parsed.outputType) {
+            result = parsed;
+            if (result.outputType === 'message' && !result.userMessage) {
+              log('Warning: outputType is "message" but userMessage is missing, treating as "log"');
+              result = { outputType: 'log', internalLog: result.internalLog };
+            }
+            log(`Agent result: outputType=${result.outputType}${result.internalLog ? `, log=${result.internalLog}` : ''}`);
+          } else {
+            log('Structured JSON output missing or invalid, falling back to raw text');
+            result = textResult
+              ? { outputType: 'message', userMessage: textResult }
+              : { outputType: 'log' };
           }
+        } else {
+          const errorMsg = message.error?.message ?? `Agent error: ${message.subtype}`;
+          log(errorMsg);
+          result = { outputType: 'log', internalLog: errorMsg };
         }
       }
     }
