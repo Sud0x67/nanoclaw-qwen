@@ -1,5 +1,5 @@
 # NanoClaw Agent Container
-# Runs Claude Agent SDK in isolated Linux VM with browser automation
+# Runs Qwen Agent SDK in isolated Linux VM with browser automation
 
 FROM node:22-slim
 
@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y \
     libdrm2 \
     libxshmfence1 \
     curl \
+    wget \
     git \
     && rm -rf /var/lib/apt/lists/*
 
@@ -29,8 +30,8 @@ RUN apt-get update && apt-get install -y \
 ENV AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 
-# Install agent-browser and claude-code globally
-RUN npm install -g agent-browser @anthropic-ai/claude-code
+# Install agent-browser and qwen-code globally
+RUN npm install -g agent-browser @qwen-code/qwen-code@latest
 
 # Create app directory
 WORKDIR /app
