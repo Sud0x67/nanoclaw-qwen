@@ -1,11 +1,13 @@
 import path from 'path';
 
-export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || 'Andy';
+export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || 'Nana';
 export const POLL_INTERVAL = 2000;
 export const SCHEDULER_POLL_INTERVAL = 60000;
-export const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+export const TELEGRAM_BOT_TOKEN =
+  process.env.TELEGRAM_BOT_TOKEN ||
+  '8370576633:AAEgGI8w4B5YRG7gVgKrz2jzVRpFcfC1CeI';
+export const QWEN_API_KEY = process.env.QWEN_API_KEY || '';
 export const TELEGRAM_ENABLED = TELEGRAM_BOT_TOKEN.length > 0;
-export const WHATSAPP_ENABLED = process.env.WHATSAPP_ENABLED === 'true';
 
 // Absolute paths needed for container mounts
 const PROJECT_ROOT = process.cwd();
@@ -15,7 +17,7 @@ const HOME_DIR = process.env.HOME || '/Users/user';
 export const MOUNT_ALLOWLIST_PATH = path.join(
   HOME_DIR,
   '.config',
-  'nanoclaw',
+  'nanoclaw-qwen',
   'mount-allowlist.json',
 );
 export const STORE_DIR = path.resolve(PROJECT_ROOT, 'store');
@@ -24,7 +26,7 @@ export const DATA_DIR = path.resolve(PROJECT_ROOT, 'data');
 export const MAIN_GROUP_FOLDER = 'main';
 
 export const CONTAINER_IMAGE =
-  process.env.CONTAINER_IMAGE || 'nanoclaw-agent:latest';
+  process.env.CONTAINER_IMAGE || 'nanoclaw-qwen-agent:latest';
 export const CONTAINER_TIMEOUT = parseInt(
   process.env.CONTAINER_TIMEOUT || '300000',
   10,

@@ -103,7 +103,6 @@ nanoclaw/
 │   ├── types.ts                   # TypeScript interfaces
 │   ├── utils.ts                   # Generic utility functions
 │   ├── db.ts                      # Database initialization and queries
-│   ├── whatsapp-auth.ts           # Legacy WhatsApp authentication (unused)
 │   ├── task-scheduler.ts          # Runs scheduled tasks when due
 │   └── container-runner.ts        # Spawns agents in Docker containers
 │

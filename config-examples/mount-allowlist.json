@@ -1,14 +1,9 @@
 {
   "allowedRoots": [
     {
-      "path": "~/projects",
+      "path": "~/code",
       "allowReadWrite": true,
       "description": "Development projects"
-    },
-    {
-      "path": "~/repos",
-      "allowReadWrite": true,
-      "description": "Git repositories"
     },
     {
       "path": "~/Documents/work",
@@ -19,7 +14,8 @@
   "blockedPatterns": [
     "password",
     "secret",
-    "token"
+    "token",
+    "private"
   ],
   "nonMainReadOnly": true
 }
