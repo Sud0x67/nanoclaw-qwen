@@ -9,10 +9,7 @@ import {
   IPC_POLL_INTERVAL,
   MAIN_GROUP_FOLDER,
   POLL_INTERVAL,
-  STORE_DIR,
   TIMEZONE,
-  TRIGGER_PATTERN,
-  WHATSAPP_ENABLED,
 } from './config.js';
 import {
   AgentResponse,
@@ -28,19 +25,14 @@ import {
   getAllRegisteredGroups,
   getAllSessions,
   getAllTasks,
-  getLastGroupSync,
   getMessagesSince,
   getNewMessages,
   getRouterState,
   getTaskById,
   initDatabase,
-  setLastGroupSync,
   setRegisteredGroup,
   setRouterState,
   setSession,
-  storeChatMetadata,
-  storeMessage,
-  updateChatName,
   updateTask,
 } from './db.js';
 import { GroupQueue } from './group-queue.js';
