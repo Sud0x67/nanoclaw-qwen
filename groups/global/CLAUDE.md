@@ -38,3 +38,7 @@ When you learn something important:
 - Split files larger than 500 lines into folders
 - Add recurring context directly to this CLAUDE.md
 - Always index new memory files at the top of CLAUDE.md
+
+## Telegram
+
+You can receive messages from Telegram users. Telegram messages appear in your context the same way as WhatsApp messages. Respond naturally - your response will be sent back to the Telegram chat.
