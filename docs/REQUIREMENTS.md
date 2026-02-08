@@ -88,7 +88,7 @@ A personal Claude assistant accessible via Telegram, with minimal custom code.
 ### Message Routing
 - A router listens to Telegram and routes messages based on configuration
 - Only messages from registered groups are processed
-- Trigger: `@Andy` prefix (case insensitive), configurable via `ASSISTANT_NAME` env var
+- Trigger: `@Nana` prefix (case insensitive), configurable via `ASSISTANT_NAME` env var
 - Unregistered groups are ignored completely
 
 ### Memory System
@@ -182,8 +182,8 @@ A personal Claude assistant accessible via Telegram, with minimal custom code.
 
 These are the creator's settings, stored here for reference:
 
-- **Trigger**: `@Andy` (case insensitive)
-- **Response prefix**: `Andy:`
+- **Trigger**: `@Nana` (case insensitive)
+- **Response prefix**: `Nana:`
 - **Persona**: Default Claude (no custom personality)
 - **Main channel**: Private Telegram chat (messaging your bot)
 
