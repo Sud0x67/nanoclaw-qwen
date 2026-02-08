@@ -4,8 +4,7 @@ export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || 'Nana';
 export const POLL_INTERVAL = 2000;
 export const SCHEDULER_POLL_INTERVAL = 60000;
 export const TELEGRAM_BOT_TOKEN =
-  process.env.TELEGRAM_BOT_TOKEN ||
-  '8370576633:AAEgGI8w4B5YRG7gVgKrz2jzVRpFcfC1CeI';
+  process.env.TELEGRAM_BOT_TOKEN || '';
 export const QWEN_API_KEY = process.env.QWEN_API_KEY || '';
 export const TELEGRAM_ENABLED = TELEGRAM_BOT_TOKEN.length > 0;
 
