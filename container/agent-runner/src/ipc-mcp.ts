@@ -9,6 +9,7 @@ import fs from 'fs';
 import path from 'path';
 import { CronExpressionParser } from 'cron-parser';
 
+export const IPC_MCP_SERVER_NAME = 'nanoclaw';
 const IPC_DIR = '/workspace/ipc';
 const MESSAGES_DIR = path.join(IPC_DIR, 'messages');
 const TASKS_DIR = path.join(IPC_DIR, 'tasks');
@@ -39,7 +40,7 @@ export function createIpcMcp(ctx: IpcMcpContext) {
   const { chatJid, groupFolder, isMain } = ctx;
 
   return createSdkMcpServer({
-    name: 'nanoclaw',
+    name: IPC_MCP_SERVER_NAME,
     version: '1.0.0',
     tools: [
       tool(
@@ -50,6 +51,7 @@ export function createIpcMcp(ctx: IpcMcpContext) {
         }),
         async (args: Record<string, any>) => {
           const { text } = args as { text: string };
+          console.error(`[ipc-mcp] send_message -> ${chatJid}`);
           const data = {
             type: 'message',
             chatJid,
@@ -108,6 +110,7 @@ SCHEDULE VALUE FORMAT (all times are LOCAL timezone):
             context_mode?: 'group' | 'isolated';
             target_group_jid?: string;
           };
+          console.error(`[ipc-mcp] schedule_task -> ${chatJid}`);
           // Validate schedule_value before writing IPC
           if (schedule_type === 'cron') {
             try {
@@ -167,6 +170,7 @@ SCHEDULE VALUE FORMAT (all times are LOCAL timezone):
         'List all scheduled tasks. From main: shows all tasks. From other groups: shows only that group\'s tasks.',
         {},
         async () => {
+          console.error(`[ipc-mcp] list_tasks -> ${chatJid}`);
           const tasksFile = path.join(IPC_DIR, 'current_tasks.json');
 
           try {
@@ -223,6 +227,7 @@ SCHEDULE VALUE FORMAT (all times are LOCAL timezone):
         }),
         async (args: Record<string, any>) => {
           const { task_id } = args as { task_id: string };
+          console.error(`[ipc-mcp] pause_task -> ${chatJid}`);
           const data = {
             type: 'pause_task',
             taskId: task_id,
@@ -250,6 +255,7 @@ SCHEDULE VALUE FORMAT (all times are LOCAL timezone):
         }),
         async (args: Record<string, any>) => {
           const { task_id } = args as { task_id: string };
+          console.error(`[ipc-mcp] resume_task -> ${chatJid}`);
           const data = {
             type: 'resume_task',
             taskId: task_id,
@@ -277,6 +283,7 @@ SCHEDULE VALUE FORMAT (all times are LOCAL timezone):
         }),
         async (args: Record<string, any>) => {
           const { task_id } = args as { task_id: string };
+          console.error(`[ipc-mcp] cancel_task -> ${chatJid}`);
           const data = {
             type: 'cancel_task',
             taskId: task_id,
@@ -314,6 +321,7 @@ Use available_groups.json to find the JID for a group. The folder name should be
             folder: string;
             trigger: string;
           };
+          console.error(`[ipc-mcp] register_group -> ${chatJid}`);
           if (!isMain) {
             return {
               content: [{ type: 'text', text: 'Only the main group can register new groups.' }],

@@ -5,7 +5,7 @@
 
 import fs from 'fs';
 import { query, type SDKUserMessage } from '@qwen-code/sdk';
-import { createIpcMcp } from './ipc-mcp.js';
+import { IPC_MCP_SERVER_NAME, createIpcMcp } from './ipc-mcp.js';
 
 interface ContainerInput {
   prompt: string;
@@ -105,6 +105,7 @@ async function main(): Promise<void> {
     groupFolder: input.groupFolder,
     isMain: input.isMain
   });
+  log(`IPC MCP registered: ${IPC_MCP_SERVER_NAME}`);
 
   let result: AgentResponse | null = null;
   let newSessionId: string | undefined;
@@ -162,7 +163,7 @@ async function main(): Promise<void> {
         ],
         permissionMode: 'yolo',
         mcpServers: {
-          nanoclaw: ipcMcp
+          [IPC_MCP_SERVER_NAME]: ipcMcp
         },
         authType: "qwen-oauth"
       }
