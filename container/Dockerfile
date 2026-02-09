@@ -64,5 +64,6 @@ USER node
 # Set working directory to group workspace
 WORKDIR /workspace/group
 
+COPY skills/ ./.qwen/skills/
 # Entry point reads JSON from stdin, outputs JSON to stdout
 ENTRYPOINT ["/app/entrypoint.sh"]

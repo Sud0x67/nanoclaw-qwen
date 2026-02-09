@@ -77,12 +77,6 @@ function buildVolumeMounts(
       containerPath: '/workspace/project',
       readonly: false,
     });
-    // todo if qwen api key is configured, skip mount this.
-    mounts.push({
-      hostPath: path.join(homeDir, '.qwen'),
-      containerPath: '/home/node/.qwen',
-      readonly: true,
-    });
     // Main also gets its group folder as the working directory
     mounts.push({
       hostPath: path.join(GROUPS_DIR, group.folder),
@@ -95,13 +89,6 @@ function buildVolumeMounts(
       hostPath: path.join(GROUPS_DIR, group.folder),
       containerPath: '/workspace/group',
       readonly: false,
-    });
-
-    // todo if qwen api key is configured, skip mount this.
-    mounts.push({
-      hostPath: path.join(homeDir, '.qwen'),
-      containerPath: '/home/node/.qwen',
-      readonly: true,
     });
 
     // Global memory directory (read-only for non-main)
@@ -118,16 +105,17 @@ function buildVolumeMounts(
 
   // Per-group Claude sessions directory (isolated from other groups)
   // Each group gets their own .claude/ to prevent cross-group session access
-  const groupSessionsDir = path.join(
-    DATA_DIR,
-    'sessions',
-    group.folder,
-    '.claude',
-  );
-  fs.mkdirSync(groupSessionsDir, { recursive: true });
+  // TODO how to handle authentication?
+  // const groupSessionsDir = path.join(
+  //   DATA_DIR,
+  //   'sessions',
+  //   group.folder,
+  //   '.qwen',
+  // );
+  // fs.mkdirSync(groupSessionsDir, { recursive: true });
   mounts.push({
-    hostPath: groupSessionsDir,
-    containerPath: '/home/node/.claude',
+    hostPath: path.join(homeDir, '.qwen'),
+    containerPath: '/home/node/.qwen',
     readonly: false,
   });
 

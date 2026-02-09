@@ -163,7 +163,8 @@ async function main(): Promise<void> {
         permissionMode: 'yolo',
         mcpServers: {
           nanoclaw: ipcMcp
-        }
+        },
+        authType: "qwen-oauth"
       }
     })) {
       if (message.type === 'system' && !newSessionId) {
