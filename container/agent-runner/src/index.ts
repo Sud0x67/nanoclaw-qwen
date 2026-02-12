@@ -127,7 +127,7 @@ async function main(): Promise<void> {
     'You must respond with a single JSON object and nothing else.',
     'Schema: {"outputType":"message"|"log","userMessage"?:string,"internalLog"?:string}.',
     'If you want to send a message to the user or group, set outputType="message" and include userMessage.',
-    'Otherwise set outputType="log" and optionally include internalLog.'
+    'Otherwise set outputType="log" and optionally include internalLog. Give the full result'
   ].join(' ');
 
   const systemContext = globalClaudeMd
@@ -151,23 +151,32 @@ async function main(): Promise<void> {
   try {
     log('Starting agent...');
 
-    for await (const message of query({
+    const q = query({
       prompt: promptInput,
       options: {
         cwd: '/workspace/group',
         allowedTools: [
           'Bash',
-          'Read', 'Write', 'Edit', 'Glob', 'Grep',
-          'WebSearch', 'WebFetch',
-          'mcp__nanoclaw__*'
+          'Read',
+          'Write',
+          'Edit',
+          'Glob',
+          'Grep',
+          'WebSearch',
+          'WebFetch',
+          'mcp__nanoclaw__*',
         ],
         permissionMode: 'yolo',
         mcpServers: {
-          [IPC_MCP_SERVER_NAME]: ipcMcp
+          [IPC_MCP_SERVER_NAME]: ipcMcp,
         },
-        authType: "qwen-oauth"
-      }
-    })) {
+        authType: 'qwen-oauth',
+        includePartialMessages: true,
+        model: 'qwen-max',
+      },
+    });
+    for await (const message of q) {
+      log(`Received message: type=${message.type} , message=${JSON.stringify(message)}`);
       if (message.type === 'system' && !newSessionId) {
         newSessionId = message.session_id;
         log(`Session initialized: ${newSessionId}`);
